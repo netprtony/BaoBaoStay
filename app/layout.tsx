@@ -7,6 +7,13 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "BaoBao Stay - Phần Mềm Quản Lý Nhà Trọ Thông Minh",
   description: "Giải pháp SaaS quản lý nhà trọ, căn hộ dịch vụ, phòng trọ, hóa đơn điện nước và khách thuê chuyên nghiệp.",
+  icons: {
+    icon: [
+      { url: "/mainlogo-removebg-preview.webp", type: "image/webp" },
+    ],
+    shortcut: "/mainlogo-removebg-preview.webp",
+    apple: "/mainlogo-removebg-preview.webp",
+  },
 };
 
 export default function RootLayout({
