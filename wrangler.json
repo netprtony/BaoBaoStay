@@ -6,8 +6,9 @@
   "compatibility_flags": [
     "nodejs_compat"
   ],
-  "vars": {
-    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_vCMWN7L6rlgBFBB4WqXlUg_gwJkObCZ",
-    "NEXT_PUBLIC_SUPABASE_URL": "https://huomxcxgvqjaqjtntkrk.supabase.co"
+  "main": ".open-next/worker.js",
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "STATIC_ASSETS"
   }
 }
