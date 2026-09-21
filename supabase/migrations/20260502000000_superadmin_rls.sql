@@ -92,7 +92,7 @@ CREATE POLICY "Platform admins can view all meter readings"
   TO authenticated
   USING (public.is_platform_admin());
 
--- 11. Subscription Payments: Cho phép Superadmin xem và duyệt giao dịch thanh toán
+-- 11. Subscription Payments: Cho phép Superadmin xem, duyệt và chủ trọ tạo/cập nhật đơn thanh toán
 DROP POLICY IF EXISTS "Platform admins can view all subscription payments" ON public.subscription_payments;
 CREATE POLICY "Platform admins can view all subscription payments"
   ON public.subscription_payments FOR SELECT
@@ -105,3 +105,38 @@ CREATE POLICY "Platform admins can update all subscription payments"
   TO authenticated
   USING (public.is_platform_admin())
   WITH CHECK (public.is_platform_admin());
+
+DROP POLICY IF EXISTS "Users can insert own org subscription payments" ON public.subscription_payments;
+CREATE POLICY "Users can insert own org subscription payments"
+  ON public.subscription_payments FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    org_id IN (
+      SELECT org_id FROM public.profiles WHERE id = auth.uid()
+    )
+    OR public.is_platform_admin()
+  );
+
+DROP POLICY IF EXISTS "Users can update own org subscription payments" ON public.subscription_payments;
+CREATE POLICY "Users can update own org subscription payments"
+  ON public.subscription_payments FOR UPDATE
+  TO authenticated
+  USING (
+    org_id IN (
+      SELECT org_id FROM public.profiles WHERE id = auth.uid()
+    )
+    OR public.is_platform_admin()
+  )
+  WITH CHECK (
+    org_id IN (
+      SELECT org_id FROM public.profiles WHERE id = auth.uid()
+    )
+    OR public.is_platform_admin()
+  );
+
+DROP POLICY IF EXISTS "Platform admins can delete subscription payments" ON public.subscription_payments;
+CREATE POLICY "Platform admins can delete subscription payments"
+  ON public.subscription_payments FOR DELETE
+  TO authenticated
+  USING (public.is_platform_admin());
+

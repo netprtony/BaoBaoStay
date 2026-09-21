@@ -68,7 +68,7 @@ export function LoginForm({ action }: LoginFormProps) {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="tk: demo@mail.com"
+            placeholder="Nhập email của bạn"
             required
           />
         </div>
@@ -84,7 +84,7 @@ export function LoginForm({ action }: LoginFormProps) {
             name="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="mk: 123456"
+            placeholder="**********"
             required
           />
         </div>
