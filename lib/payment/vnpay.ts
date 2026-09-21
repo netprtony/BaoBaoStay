@@ -21,10 +21,10 @@ export const PLAN_PRICES = {
 } as const
 
 export const PLATFORM_BANK_INFO = {
-  bankId: "MBBank",
-  bankCode: "MB",
-  accountNo: "0334848398",
-  accountName: "NGUYEN HOANG BAO",
+  bankId: process.env.NEXT_PUBLIC_PLATFORM_BANK_ID || "MBBank",
+  bankCode: process.env.NEXT_PUBLIC_PLATFORM_BANK_CODE || "MB",
+  accountNo: process.env.NEXT_PUBLIC_PLATFORM_ACCOUNT_NO || "0767487840",
+  accountName: process.env.NEXT_PUBLIC_PLATFORM_ACCOUNT_NAME || "HUYNH VI KHANG",
 }
 
 export function calculatePlanAmount(plan: "basic" | "vip", cycle: BillingCycle): number {
