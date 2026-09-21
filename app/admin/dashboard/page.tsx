@@ -161,7 +161,7 @@ export default async function AdminDashboardPage() {
                   </tr>
                 ) : (
                   recentOrgs.map((org) => {
-                    const profiles = org.profiles as unknown as { full_name?: string; role?: string }[] | null
+                    const profiles = org.profiles as unknown as { full_name?: string; phone?: string; role?: string }[] | null
                     const owner = profiles?.find((p) => p.role === "owner") || profiles?.[0]
                     const propCount = (org.properties as unknown as { count: number }[])?.[0]?.count || 0
                     const roomCount = (org.rooms as unknown as { count: number }[])?.[0]?.count || 0
@@ -177,6 +177,11 @@ export default async function AdminDashboardPage() {
                           <span className="text-slate-200 font-medium block">
                             {owner?.full_name || "Chưa cập nhật"}
                           </span>
+                          {owner?.phone && (
+                            <span className="text-[10px] text-slate-400 font-mono block">
+                              SĐT: {owner.phone}
+                            </span>
+                          )}
                         </td>
                         <td className="p-4 text-center font-mono text-slate-300">{propCount}</td>
                         <td className="p-4 text-center font-mono text-slate-300">{roomCount}</td>

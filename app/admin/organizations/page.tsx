@@ -96,6 +96,7 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
                 <tr>
                   <th className="p-4">Tên Tổ chức</th>
                   <th className="p-4">Chủ sở hữu (Owner Profile)</th>
+                  <th className="p-4 text-center">Gói dịch vụ</th>
                   <th className="p-4 text-center">Nhà trọ</th>
                   <th className="p-4 text-center">Phòng trọ</th>
                   <th className="p-4 text-center">Khách thuê</th>
@@ -106,13 +107,13 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
               <tbody className="divide-y divide-slate-800/60">
                 {!orgs || orgs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500">
+                    <td colSpan={8} className="p-8 text-center text-slate-500">
                       Không tìm thấy tổ chức nào phù hợp.
                     </td>
                   </tr>
                 ) : (
                   orgs.map((org) => {
-                    const profiles = org.profiles as unknown as { full_name?: string; role?: string }[] | null
+                    const profiles = org.profiles as unknown as { full_name?: string; phone?: string; role?: string }[] | null
                     const owner = profiles?.find((p) => p.role === "owner") || profiles?.[0]
                     const propCount = (org.properties as unknown as { count: number }[])?.[0]?.count || 0
                     const roomCount = (org.rooms as unknown as { count: number }[])?.[0]?.count || 0
@@ -133,6 +134,27 @@ export default async function AdminOrganizationsPage({ searchParams }: PageProps
                           <span className="text-slate-200 font-medium block">
                             {owner?.full_name || "Chưa cập nhật"}
                           </span>
+                          {owner?.phone ? (
+                            <span className="text-[11px] text-slate-400 font-mono block">
+                              SĐT: {owner.phone}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 block">Chưa có SĐT</span>
+                          )}
+                        </td>
+                        <td className="p-4 text-center">
+                          <Badge
+                            variant="outline"
+                            className={
+                              org.plan === "vip"
+                                ? "border-amber-500/40 text-amber-300 bg-amber-500/10 text-[10px] uppercase font-bold"
+                                : org.plan === "basic"
+                                ? "border-blue-500/40 text-blue-300 bg-blue-500/10 text-[10px] uppercase font-bold"
+                                : "border-slate-700 text-slate-400 bg-slate-800/40 text-[10px] uppercase font-bold"
+                            }
+                          >
+                            {org.plan === "vip" ? "👑 VIP" : org.plan === "basic" ? "⚡ Basic" : "Free"}
+                          </Badge>
                         </td>
                         <td className="p-4 text-center font-mono font-bold text-slate-200">{propCount}</td>
                         <td className="p-4 text-center font-mono font-bold text-slate-200">{roomCount}</td>
