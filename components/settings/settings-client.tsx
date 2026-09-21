@@ -12,6 +12,8 @@ import {
   QrCode,
   Sparkles,
   AlertCircle,
+  Clock,
+  History,
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
@@ -31,6 +33,7 @@ import {
 import { BackupRestoreCard } from "./backup-restore-card"
 import { CheckoutDialog } from "./checkout-dialog"
 import { Tables } from "@/types/database.types"
+import { formatVND } from "@/lib/payment/vnpay"
 
 export const VIETNAM_BANKS = [
   { id: "MB", name: "MBBank - Ngân hàng Quân Đội" },
@@ -66,10 +69,12 @@ interface SettingsClientProps {
   profile: Tables<"profiles">
   userEmail: string
   usage?: PlanUsageInfo | null
+  payments?: Tables<"subscription_payments">[]
 }
 
-export function SettingsClient({ organization, profile, userEmail, usage }: SettingsClientProps) {
+export function SettingsClient({ organization, profile, userEmail, usage, payments = [] }: SettingsClientProps) {
   const [activeTab, setActiveTab] = useState("payment")
+  const pendingPayment = payments?.find((p) => p.status === "pending")
 
   // State cho Form thanh toán & VietQR
   const [bankId, setBankId] = useState(organization.bank_id || "MB")
@@ -576,6 +581,31 @@ export function SettingsClient({ organization, profile, userEmail, usage }: Sett
 
         {/* TAB 5: GÓI DỊCH VỤ SAAS */}
         <TabsContent value="subscription" className="space-y-6">
+          {/* Thông báo đơn hàng đang chờ Superadmin duyệt */}
+          {pendingPayment && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 flex items-start gap-3 shadow-sm">
+              <div className="p-2 rounded-lg bg-amber-100 text-amber-700 mt-0.5 shrink-0">
+                <Clock className="h-5 w-5 animate-pulse text-amber-600" />
+              </div>
+              <div className="text-xs text-amber-950 space-y-1 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-bold text-sm text-amber-950">
+                    Đơn nâng cấp/gia hạn gói {pendingPayment.plan.toUpperCase()} đang chờ Superadmin duyệt
+                  </span>
+                  <Badge className="bg-amber-500 hover:bg-amber-600 text-white text-[10px]">
+                    Chờ duyệt
+                  </Badge>
+                </div>
+                <p className="text-slate-700">
+                  Mã giao dịch: <span className="font-mono font-bold text-amber-900 bg-amber-100/70 px-1.5 py-0.5 rounded">{pendingPayment.memo}</span> &bull; Số tiền: <strong className="text-emerald-700">{formatVND(pendingPayment.amount)}</strong> &bull; Thời gian gửi: {new Date(pendingPayment.created_at).toLocaleString("vi-VN")}
+                </p>
+                <p className="text-slate-600 text-[11px]">
+                  Superadmin đang đối soát sao kê tài khoản ngân hàng. Sau khi xác nhận tiền về tài khoản, gói dịch vụ sẽ được kích hoạt tự động.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Thẻ trạng thái hiện tại */}
           <Card className="shadow-sm border bg-white">
             <CardHeader>
@@ -807,6 +837,71 @@ export function SettingsClient({ organization, profile, userEmail, usage }: Sett
 
           {/* Phần Sao lưu & Khôi phục Dữ liệu thủ công (File JSON & CSV) */}
           <BackupRestoreCard />
+
+          {/* Lịch sử giao dịch đăng ký & gia hạn */}
+          {payments && payments.length > 0 && (
+            <Card className="shadow-sm border bg-white">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-bold flex items-center gap-2 text-slate-900">
+                  <History className="h-4 w-4 text-blue-600" />
+                  Lịch sử đăng ký & giao dịch gói
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Danh sách các đơn đăng ký, nâng cấp và gia hạn dịch vụ của tổ chức bạn.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0 overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-600 border-y">
+                    <tr>
+                      <th className="py-2.5 px-4 font-semibold">Mã GD</th>
+                      <th className="py-2.5 px-4 font-semibold">Gói</th>
+                      <th className="py-2.5 px-4 font-semibold">Kỳ hạn</th>
+                      <th className="py-2.5 px-4 font-semibold">Số tiền</th>
+                      <th className="py-2.5 px-4 font-semibold">Thời gian</th>
+                      <th className="py-2.5 px-4 font-semibold text-right">Trạng thái</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {payments.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50/60">
+                        <td className="py-2.5 px-4 font-mono font-medium text-slate-800">
+                          {p.memo}
+                        </td>
+                        <td className="py-2.5 px-4 font-bold uppercase text-blue-700">
+                          {p.plan}
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-600">
+                          {p.billing_cycle === "yearly" ? "1 Năm" : "1 Tháng"}
+                        </td>
+                        <td className="py-2.5 px-4 font-semibold text-slate-900">
+                          {formatVND(p.amount)}
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-500">
+                          {new Date(p.created_at).toLocaleDateString("vi-VN")}
+                        </td>
+                        <td className="py-2.5 px-4 text-right">
+                          {p.status === "success" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Đã kích hoạt
+                            </span>
+                          ) : p.status === "pending" ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 animate-pulse">
+                              Chờ duyệt
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200">
+                              Đã hủy / Từ chối
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>

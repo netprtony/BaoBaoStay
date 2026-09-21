@@ -45,12 +45,21 @@ export default async function SettingsPage() {
     redirect("/dashboard")
   }
 
+  // Lấy lịch sử giao dịch đăng ký gói
+  const { data: payments } = await supabase
+    .from("subscription_payments")
+    .select("*")
+    .eq("org_id", profile.org_id)
+    .order("created_at", { ascending: false })
+    .limit(10)
+
   return (
     <SettingsClient
       organization={orgData as Tables<"organizations">}
       profile={profile as Tables<"profiles">}
       userEmail={user.email || ""}
       usage={usage}
+      payments={payments || []}
     />
   )
 }

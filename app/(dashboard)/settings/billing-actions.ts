@@ -101,6 +101,43 @@ export async function createSubscriptionOrder(
   }
 }
 
+export async function requestPaymentApproval(paymentId: string) {
+  try {
+    const supabase = await createClient()
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Bạn chưa đăng nhập." }
+
+    const { data: payment, error: fetchErr } = await supabase
+      .from("subscription_payments")
+      .select("id, status, plan, billing_cycle, amount, memo")
+      .eq("id", paymentId)
+      .single()
+
+    if (fetchErr || !payment) {
+      return { error: "Không tìm thấy đơn hàng thanh toán." }
+    }
+
+    if (payment.status === "success") {
+      return { message: "Đơn hàng này đã được duyệt & kích hoạt trước đó!" }
+    }
+
+    revalidatePath("/settings")
+    revalidatePath("/admin/subscriptions/payments")
+    revalidatePath("/admin/subscriptions")
+
+    return {
+      success: true,
+      message: "✓ Đã gửi yêu cầu duyệt gói thành công! Superadmin sẽ kiểm tra giao dịch và kích hoạt gói cho bạn trong ít phút.",
+    }
+  } catch (err: unknown) {
+    return { error: (err as Error).message || "Lỗi khi gửi yêu cầu duyệt gói." }
+  }
+}
+
 export async function confirmSimulatedPayment(paymentId: string) {
   try {
     const supabase = await createClient()

@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
   createSubscriptionOrder,
+  requestPaymentApproval,
   confirmSimulatedPayment,
   cancelPendingOrder,
   type SubscriptionOrderResult,
@@ -91,19 +92,22 @@ export function CheckoutDialog({
     setIsConfirming(true)
     setMessage(null)
     try {
-      const res = await confirmSimulatedPayment(orderResult.paymentId)
+      const res = await requestPaymentApproval(orderResult.paymentId)
       if (res.error) {
         setMessage({ type: "error", text: res.error })
       } else {
-        setMessage({ type: "success", text: res.message || "Xác nhận thanh toán thành công!" })
+        setMessage({
+          type: "success",
+          text: res.message || "✓ Đã gửi yêu cầu kích hoạt gói! Superadmin sẽ kiểm tra giao dịch và kích hoạt gói cho bạn trong ít phút.",
+        })
         setTimeout(() => {
           setOpen(false)
           setStep("select")
           setOrderResult(null)
-        }, 1800)
+        }, 2200)
       }
     } catch (err: unknown) {
-      setMessage({ type: "error", text: (err as Error).message || "Lỗi xác nhận thanh toán" })
+      setMessage({ type: "error", text: (err as Error).message || "Lỗi gửi yêu cầu duyệt gói" })
     } finally {
       setIsConfirming(false)
     }
@@ -395,8 +399,12 @@ export function CheckoutDialog({
                 ) : (
                   <CheckCircle2 className="h-4 w-4" />
                 )}
-                Tôi đã chuyển khoản thành công (Kích hoạt ngay)
+                Tôi đã chuyển khoản — Gửi yêu cầu duyệt gói
               </Button>
+
+              <p className="text-[11px] text-center text-slate-500">
+                Sau khi gửi yêu cầu, đơn hàng sẽ ở trạng thái <strong>Chờ duyệt</strong>. Superadmin sẽ kiểm tra sao kê ngân hàng và kích hoạt gói cho bạn trong ít phút.
+              </p>
 
               <Button
                 type="button"
