@@ -6,9 +6,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { paymentId, status, txnRef, secret } = body
 
-    // Simple webhook auth verification if webhook secret is configured
+    // 1. Enforce webhook authentication secret
     const WEBHOOK_SECRET = process.env.PAYMENT_WEBHOOK_SECRET || "baobaostay_secret_2026"
-    if (secret && secret !== WEBHOOK_SECRET) {
+    if (!secret || secret !== WEBHOOK_SECRET) {
       return NextResponse.json({ error: "Unauthorized webhook payload" }, { status: 401 })
     }
 
@@ -26,6 +26,16 @@ export async function POST(request: Request) {
 
     if (fetchErr || !payment) {
       return NextResponse.json({ error: "Payment record not found" }, { status: 404 })
+    }
+
+    // 2. Amount verification if amount is supplied in payload
+    if (body.amount !== undefined && Number(body.amount) !== Number(payment.amount)) {
+      return NextResponse.json({ error: "Payment amount mismatch" }, { status: 400 })
+    }
+
+    // 3. Idempotency check: Do not re-process or double-extend already completed payments
+    if (payment.status === "success") {
+      return NextResponse.json({ success: true, message: "Payment already processed" })
     }
 
     if (status === "success" || status === "COMPLETED") {

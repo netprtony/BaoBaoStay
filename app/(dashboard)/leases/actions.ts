@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { leaseSchema } from "@/lib/validations"
 
 type ActionState = { error?: string; success?: boolean } | null
 
@@ -17,21 +18,23 @@ export async function createLease(prevState: ActionState, formData: FormData) {
       return { error: "Không tìm thấy thông tin tổ chức của bạn." }
     }
 
-    const roomId = formData.get("roomId") as string
-    const tenantId = formData.get("tenantId") as string
-    const startDate = formData.get("startDate") as string
-    const endDate = formData.get("endDate") as string
-    const deposit = Number(formData.get("deposit") || 0)
-    const monthlyRent = Number(formData.get("monthlyRent") || 0)
+    const rawData = {
+      roomId: formData.get("roomId"),
+      tenantId: formData.get("tenantId"),
+      startDate: formData.get("startDate"),
+      endDate: formData.get("endDate"),
+      depositAmount: formData.get("deposit") || 0,
+      monthlyRent: formData.get("monthlyRent"),
+      status: "active" as const,
+    }
+
+    const parseResult = leaseSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      return { error: parseResult.error.errors[0].message }
+    }
+
+    const { roomId, tenantId, startDate, endDate, depositAmount: deposit, monthlyRent } = parseResult.data
     const contractFile = formData.get("contractFile") as File | null
-
-    if (!roomId || !tenantId || !startDate || !endDate) {
-      return { error: "Vui lòng chọn phòng, khách thuê và thời hạn hợp đồng." }
-    }
-
-    if (isNaN(deposit) || isNaN(monthlyRent) || monthlyRent <= 0) {
-      return { error: "Vui lòng nhập giá thuê hàng tháng hợp lệ." }
-    }
 
     // 1. Kiểm tra phòng có thuộc tổ chức và đang còn trống (available) không
     const { data: roomData, error: roomError } = await supabase
@@ -92,7 +95,7 @@ export async function createLease(prevState: ActionState, formData: FormData) {
       const storagePath = `${profile.org_id}/${fileName}`
 
       const arrayBuffer = await contractFile.arrayBuffer()
-      const buffer = Buffer.from(arrayBuffer)
+      const buffer = new Uint8Array(arrayBuffer)
 
       const { error: uploadError } = await supabase.storage
         .from("contracts")

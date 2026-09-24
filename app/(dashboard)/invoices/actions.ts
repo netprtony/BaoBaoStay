@@ -2,6 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { invoiceSchema } from "@/lib/validations"
+import { calculateInvoiceTotal } from "@/lib/invoices/calculations"
 
 export type InvoiceItemInput = {
   id?: string
@@ -140,8 +142,9 @@ export async function createInvoice(input: CreateInvoiceInput) {
       return { error: "Không tìm thấy thông tin tổ chức của bạn." }
     }
 
-    if (!input.leaseId || !input.period || !input.dueDate) {
-      return { error: "Vui lòng điền đầy đủ các thông tin bắt buộc." }
+    const validation = invoiceSchema.safeParse(input)
+    if (!validation.success) {
+      return { error: validation.error.errors[0].message }
     }
 
     const cleanPeriod = input.period.trim()
@@ -154,6 +157,15 @@ export async function createInvoice(input: CreateInvoiceInput) {
       }
     }
 
+    // Tính toán tổng tiền hóa đơn chuẩn xác (làm tròn số nguyên VND)
+    const calc = calculateInvoiceTotal({
+      rentAmount: input.rentAmount,
+      electricityAmount: input.electricityAmount,
+      waterAmount: input.waterAmount,
+      items: input.items,
+      otherFees: input.otherFees,
+    })
+
     // Insert invoice
     const { data: invoice, error: invoiceError } = await supabase
       .from("invoices")
@@ -161,11 +173,11 @@ export async function createInvoice(input: CreateInvoiceInput) {
         org_id: profile.org_id,
         lease_id: input.leaseId,
         period: cleanPeriod,
-        rent_amount: input.rentAmount,
-        electricity_amount: input.electricityAmount,
-        water_amount: input.waterAmount,
-        other_fees: input.otherFees,
-        total_amount: input.totalAmount,
+        rent_amount: calc.rentAmount,
+        electricity_amount: calc.electricityAmount,
+        water_amount: calc.waterAmount,
+        other_fees: calc.itemsTotal,
+        total_amount: calc.totalAmount,
         due_date: input.dueDate,
         status: input.status || "pending",
       })
@@ -408,6 +420,23 @@ export async function markInvoiceAsPaid(invoiceId: string) {
 export async function markInvoiceAsPending(invoiceId: string) {
   try {
     const supabase = await createClient()
+
+    // Kiểm tra trạng thái hiện tại: nếu đã thanh toán quá 7 ngày, chặn hoàn tác
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("status, paid_at")
+      .eq("id", invoiceId)
+      .single()
+
+    if (inv?.status === "paid" && inv.paid_at) {
+      const daysDiff = (Date.now() - new Date(inv.paid_at).getTime()) / (1000 * 3600 * 24)
+      if (daysDiff > 7) {
+        return {
+          error: "Hóa đơn đã thanh toán quá 7 ngày. Không thể hoàn tác trạng thái để bảo vệ tính toàn vẹn của sổ sách tài chính.",
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("invoices")
       .update({

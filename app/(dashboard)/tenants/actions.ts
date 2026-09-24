@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
+import { tenantSchema } from "@/lib/validations"
 
 type ActionState = { error?: string; success?: boolean } | null
 
@@ -17,17 +18,19 @@ export async function createTenant(prevState: ActionState, formData: FormData) {
       return { error: "Không tìm thấy thông tin tổ chức của bạn." }
     }
 
-    const fullName = (formData.get("fullName") as string)?.trim()
-    const phone = (formData.get("phone") as string)?.trim()
-    const idCardNumber = (formData.get("idCardNumber") as string)?.trim() || null
-    const email = (formData.get("email") as string)?.trim() || null
+    const rawData = {
+      fullName: formData.get("fullName"),
+      phone: formData.get("phone"),
+      idCardNumber: formData.get("idCardNumber") || null,
+      email: formData.get("email") || null,
+    }
 
-    if (!fullName) {
-      return { error: "Họ và tên khách thuê không được để trống." }
+    const parseResult = tenantSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      return { error: parseResult.error.errors[0].message }
     }
-    if (!phone) {
-      return { error: "Số điện thoại không được để trống." }
-    }
+
+    const { fullName, phone, idCardNumber, email } = parseResult.data
 
     const { error } = await supabase.from("tenants").insert({
       org_id: profile.org_id,

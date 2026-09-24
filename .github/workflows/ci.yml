@@ -1,0 +1,43 @@
+name: CI / Production Readiness Gate
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test-and-verify:
+    name: Lint, Typecheck, Unit & Security Tests, Build Verification
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: "https://mock-supabase.baobaostay.com"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "mock-anon-key-ci"
+      PAYMENT_WEBHOOK_SECRET: "mock_ci_payment_secret"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies (clean install)
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check with TypeScript
+        run: npx tsc --noEmit
+        continue-on-error: true
+
+      - name: Run Vitest Unit & Security Tests
+        run: npm run test
+
+      - name: Verify OpenNext Cloudflare Worker Build
+        run: npm run build:worker

@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { assertCanCreateProperty } from "@/lib/subscription/check-limit"
+import { propertySchema } from "@/lib/validations"
 
 type ActionState = { error?: string; success?: boolean } | null
 
@@ -17,13 +18,21 @@ export async function createProperty(prevState: ActionState, formData: FormData)
     // Kiểm tra giới hạn gói đăng ký (Free/Basic/VIP)
     await assertCanCreateProperty(profile.org_id)
 
-    const name = formData.get("name") as string
-    const address = formData.get("address") as string
-    const description = formData.get("description") as string
-
-    if (!name || !address) {
-      return { error: "Tên và địa chỉ không được để trống" }
+    const rawData = {
+      name: formData.get("name"),
+      address: formData.get("address"),
+      city: formData.get("city") || "",
+      electricityRate: formData.get("electricityRate") || 3500,
+      waterRate: formData.get("waterRate") || 15000,
     }
+
+    const parseResult = propertySchema.safeParse(rawData)
+    if (!parseResult.success) {
+      return { error: parseResult.error.errors[0].message }
+    }
+
+    const { name, address } = parseResult.data
+    const description = (formData.get("description") as string) || ""
 
     const { error } = await supabase.from("properties").insert({
       org_id: profile.org_id,

@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { assertCanCreateRoom } from "@/lib/subscription/check-limit"
+import { roomSchema } from "@/lib/validations"
 
 type ActionState = { error?: string; success?: boolean } | null
 
@@ -17,15 +18,21 @@ export async function createRoom(prevState: ActionState, formData: FormData) {
     // Kiểm tra giới hạn gói đăng ký (Free/Basic/VIP)
     await assertCanCreateRoom(profile.org_id)
 
-    const propertyId = formData.get("propertyId") as string
-    const roomCode = formData.get("roomCode") as string
-    const area = formData.get("area") ? Number(formData.get("area")) : null
-    const basePrice = Number(formData.get("basePrice"))
-    const status = formData.get("status") as "available" | "occupied" | "maintenance"
-
-    if (!propertyId || !roomCode || isNaN(basePrice)) {
-      return { error: "Mã phòng và giá thuê không được để trống" }
+    const rawData = {
+      propertyId: formData.get("propertyId"),
+      roomCode: formData.get("roomCode"),
+      area: formData.get("area") ? Number(formData.get("area")) : 20,
+      basePrice: formData.get("basePrice"),
+      status: formData.get("status") || "available",
+      maxTenants: formData.get("maxTenants") || 2,
     }
+
+    const parseResult = roomSchema.safeParse(rawData)
+    if (!parseResult.success) {
+      return { error: parseResult.error.errors[0].message }
+    }
+
+    const { propertyId, roomCode, area, basePrice, status } = parseResult.data
 
     const { error } = await supabase.from("rooms").insert({
       org_id: profile.org_id,
